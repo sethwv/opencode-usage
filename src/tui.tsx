@@ -43,7 +43,7 @@ export default Plugin.define({
           if (!action.refresh) return
           await load(true)
           context.ui.dialog.clear()
-          if (snapshot().windows.length > 0) showDetails()
+          if (snapshot().windows.length > 0 || snapshot().sections.length > 0) showDetails()
           return
         }
         context.ui.toast.show({ message: outcome.message ?? "Could not complete action.", variant: "error" })
@@ -55,7 +55,7 @@ export default Plugin.define({
       const refresh = () => {
         context.ui.dialog.clear()
         void load(true).then(() => {
-          if (snapshot().windows.length > 0) showDetails()
+            if (snapshot().windows.length > 0 || snapshot().sections.length > 0) showDetails()
         })
       }
 
@@ -77,13 +77,13 @@ export default Plugin.define({
       context.ui.dialog.set({ size: "medium", centered: true })
       context.ui.dialog.show(() => (
         <box flexDirection="column" alignItems="center" padding={1} gap={1}>
-          <text fg={muted}>Usage</text>
+          <text fg={muted}>{snapshot().providerName || "Usage"}</text>
           <For each={snapshot().windows}>
             {(window) => (
               <box width={cardWidth()} flexDirection="column" alignItems="center" border borderColor={muted} paddingLeft={1} paddingRight={1}>
-                <text>{`${windowName(window)} · ${Math.round(window.usedPercent)}%`}</text>
+                <text>{`${windowName(window)} · ${Math.round(window.usedPercent)}%${window.valueLabel ? ` · ${window.valueLabel}` : ""}`}</text>
                 <text>{formatDetailBar(window.usedPercent)}</text>
-                <text fg={muted}>{`Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`}</text>
+                {window.resetAt && <text fg={muted}>{`Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`}</text>}
               </box>
             )}
           </For>
@@ -116,8 +116,7 @@ export default Plugin.define({
           palette: true,
           slash: { name: "usage" },
           run: () => {
-            const first = snapshot().windows[0]
-            if (first) showDetails()
+            if (snapshot().windows.length > 0 || snapshot().sections.length > 0) showDetails()
             else context.ui.toast.show({ message: snapshot().error ?? "Usage is unavailable.", variant: "info" })
           },
         },
@@ -125,11 +124,11 @@ export default Plugin.define({
     }))
 
     const muted = (context.theme as any).text?.muted ?? (context.theme as any).textMuted
-    const windowName = (window: { label: string }) => (window.label === "W" ? "Week" : "Session")
+    const windowName = (window: { label: string; title?: string }) => window.title ?? (window.label === "W" ? "Week" : "Session")
     const windowLines = (window: UsageSnapshot["windows"][number]) => [
-      `${windowName(window)} · ${Math.round(window.usedPercent)}%`,
+      `${windowName(window)} · ${Math.round(window.usedPercent)}%${window.valueLabel ? ` · ${window.valueLabel}` : ""}`,
       formatDetailBar(window.usedPercent),
-      `Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`,
+      ...(window.resetAt ? [`Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`] : []),
     ]
     const cardWidth = () => {
       const lines = [...snapshot().windows.flatMap(windowLines), ...snapshot().sections.flatMap((section) => [section.title, ...section.lines])]
@@ -148,6 +147,9 @@ export default Plugin.define({
       return (
         <Show when={snapshot().windows.length > 0}>
           <box width="100%" height={1} flexDirection="row" justifyContent="center">
+            <Show when={snapshot().providerName}>
+              <text fg={muted}>{`${snapshot().providerName}: `}</text>
+            </Show>
             <For each={snapshot().windows}>
               {(window, index) => (
                 <>
@@ -158,7 +160,7 @@ export default Plugin.define({
                       showDetails()
                     }}
                   >
-                    <text fg={muted}>{`${index() > 0 ? "\u00a0" : ""}${formatBar(window.usedPercent)} ${window.label} ${Math.round(window.usedPercent)}% ${formatCompactRemaining(window.resetAt)}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
+                    <text fg={muted}>{`${index() > 0 ? "\u00a0" : ""}${formatBar(window.usedPercent)}${window.label ? ` ${window.label}` : ""} ${Math.round(window.usedPercent)}%${window.composerValueLabel ? ` ${window.composerValueLabel}` : ""}${window.resetAt ? ` ${formatCompactRemaining(window.resetAt)}` : ""}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
                   </box>
                 </>
               )}

@@ -1,6 +1,6 @@
 import type { UsageAction, UsageSnapshot } from "../usage/types.js"
 
-export type AdapterUsageSnapshot = Omit<UsageSnapshot, "providerID">
+export type AdapterUsageSnapshot = Omit<UsageSnapshot, "providerID" | "providerName">
 export type UsageActionResult = { status: "success" | "failed" | "unsupported"; message?: string }
 
 export type UsageAdapter = {

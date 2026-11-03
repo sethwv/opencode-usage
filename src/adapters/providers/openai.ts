@@ -5,7 +5,7 @@ import type { UsageAdapter } from "../types.js"
 
 export const metadata = {
   id: "openai",
-  name: "ChatGPT",
+  name: "OpenAI",
 }
 
 // Implementation

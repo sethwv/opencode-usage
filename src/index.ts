@@ -55,7 +55,7 @@ export default Plugin.define({
         const snapshot = !adapter
           ? { ...emptySnapshot(id), error: "Usage is not supported for the selected provider." }
           : await adapter.load()
-        const current = { ...snapshot, providerID: id }
+        const current = { ...snapshot, providerID: id, providerName: adapter?.name ?? "" }
         entry.current = current
         await registration.events.emit("updated", current)
         return current

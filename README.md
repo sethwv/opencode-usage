@@ -1,6 +1,6 @@
 # OpenCode Usage
 
-An OpenCode TUI plugin for showing subscription or account usage above the composer. It renders the usage windows supported by the currently selected provider, then opens a shared details dialog with provider-specific sections and actions.
+An OpenCode TUI plugin that shows usage for the selected model provider above the composer. Open the **Show usage** command or run `/usage` for provider-specific details and actions.
 
 ## Install
 
@@ -12,19 +12,30 @@ Add the package to global OpenCode configuration:
 }
 ```
 
-For a local checkout:
+Restart OpenCode after changing global plugin configuration.
 
-```jsonc
-{
-  "plugins": ["/path/to/opencode-usage"]
-}
+## Supported providers
+
+| Provider | Credential | Composer meter | Details |
+| --- | --- | --- | --- |
+| OpenAI | Active OpenCode OAuth connection | ChatGPT rate-limit windows | Reset time and available banked resets |
+| OpenRouter | Active OpenCode API-key connection | Finite key cap, percent used, and spent amount | Key cap, remaining amount, total usage, and account credits |
+
+The meter always follows the selected model's provider. It does not reuse usage data from another provider.
+
+## Local development
+
+OpenCode's local plugin discovery requires real files under its plugin directory. Copy the source after every change:
+
+```sh
+rsync -a --delete src/ ~/.config/opencode/plugin/opencode-usage/
 ```
 
-Restart OpenCode after changing global plugin configuration.
+Restart OpenCode if the running plugin does not reload the updated files. A restart interrupts active sessions.
 
 ## What it renders
 
-- Compact usage meters above the composer for available usage windows.
+- Compact usage meters above the composer with a provider-name prefix.
 - A details dialog containing fuller bars, exact reset times, and remaining time.
 - Adapter-defined sections for account or subscription details.
 - Adapter-defined actions, including actions that require confirmation.
@@ -39,8 +50,8 @@ Add an adapter under `src/adapters/providers/` and register it in `src/adapters/
 type UsageAdapter = {
   id: string
   name: string
-  load(): Promise<UsageSnapshot>
-  runAction(actionID: string): Promise<UsageActionResult>
+  load(): Promise<AdapterUsageSnapshot>
+  runAction(actionID: UsageAction["id"]): Promise<UsageActionResult>
 }
 ```
 

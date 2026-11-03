@@ -5,11 +5,14 @@ const window = {
   properties: {
     id: { type: "string" },
     label: { type: "string" },
+    title: { type: "string" },
     usedPercent: { type: "number" },
+    valueLabel: { type: "string" },
+    composerValueLabel: { type: "string" },
     resetAt: { type: "number" },
     durationSeconds: { type: "number" },
   },
-  required: ["id", "label", "usedPercent", "resetAt"],
+  required: ["id", "label", "usedPercent"],
   additionalProperties: false,
 } as const
 
@@ -17,6 +20,7 @@ const snapshot = {
   type: "object",
   properties: {
     providerID: { type: "string" },
+    providerName: { type: "string" },
     status: { type: "string", enum: ["ready", "stale", "unavailable"] },
     windows: { type: "array", items: window },
     sections: {
@@ -50,7 +54,7 @@ const snapshot = {
     refreshedAt: { type: "number" },
     error: { type: "string" },
   },
-  required: ["providerID", "status", "windows", "sections", "actions"],
+  required: ["providerID", "providerName", "status", "windows", "sections", "actions"],
   additionalProperties: false,
 } as const
 
