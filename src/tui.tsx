@@ -1,5 +1,5 @@
 import { Plugin } from "@opencode/plugin/tui"
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js"
+import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { CodexUsage } from "./rpc.js"
 import { emptySnapshot, formatBar, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageSnapshot } from "./usage/types.js"
 
@@ -9,16 +9,24 @@ export default Plugin.define({
     const usage = context.client.rpc(CodexUsage)
     const [snapshot, setSnapshot] = createSignal<UsageSnapshot>(emptySnapshot())
     const [resetArmed, setResetArmed] = createSignal(false)
-    const providerInput = () => ({ providerID: context.ui.model.current()?.providerID })
+    const activeProviderID = () => context.ui.model.current()?.providerID
+    const providerInput = (providerID = activeProviderID()) => ({ providerID })
 
-    const load = async (force = false) => {
+    const load = async (force = false, providerID = activeProviderID()) => {
       try {
-        const next = force ? await usage.refresh(providerInput()) : await usage.get(providerInput())
-        setSnapshot(next as UsageSnapshot)
+        const next = force ? await usage.refresh(providerInput(providerID)) : await usage.get(providerInput(providerID))
+        if (providerID === activeProviderID()) setSnapshot(next as UsageSnapshot)
       } catch {
-        setSnapshot({ ...emptySnapshot(), error: "Usage is temporarily unavailable." })
+        if (providerID === activeProviderID()) setSnapshot({ ...emptySnapshot(providerID), error: "Usage is temporarily unavailable." })
       }
     }
+
+    createEffect(() => {
+      const providerID = activeProviderID()
+      setResetArmed(false)
+      setSnapshot(emptySnapshot(providerID))
+      void load(false, providerID)
+    })
 
     const openDashboard = async () => {
       const result = await usage.openDashboard(providerInput())
@@ -145,9 +153,9 @@ export default Plugin.define({
 
     function Meters() {
       onMount(() => {
-        void load()
         const unsubscribe = usage.events.on("updated", (event) => {
-          setSnapshot(event.data as UsageSnapshot)
+          const next = event.data as UsageSnapshot
+          if (next.providerID === activeProviderID()) setSnapshot(next)
         })
         onCleanup(unsubscribe)
       })

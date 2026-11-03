@@ -16,6 +16,7 @@ const window = {
 const snapshot = {
   type: "object",
   properties: {
+    providerID: { type: "string" },
     status: { type: "string", enum: ["ready", "stale", "unavailable"] },
     windows: { type: "array", items: window },
     bankedResetCount: { type: "number" },
@@ -30,7 +31,7 @@ const snapshot = {
     refreshedAt: { type: "number" },
     error: { type: "string" },
   },
-  required: ["status", "windows"],
+  required: ["providerID", "status", "windows"],
   additionalProperties: false,
 } as const
 

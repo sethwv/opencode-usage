@@ -7,6 +7,7 @@ export type UsageWindow = {
 }
 
 export type UsageSnapshot = {
+  providerID: string
   status: "ready" | "stale" | "unavailable"
   windows: UsageWindow[]
   bankedResetCount?: number
@@ -15,7 +16,7 @@ export type UsageSnapshot = {
   error?: string
 }
 
-export const emptySnapshot = (): UsageSnapshot => ({ status: "unavailable", windows: [] })
+export const emptySnapshot = (providerID = ""): UsageSnapshot => ({ providerID, status: "unavailable", windows: [] })
 
 export function formatBar(usedPercent: number) {
   const filled = Math.max(0, Math.min(10, Math.round(usedPercent / 10)))
