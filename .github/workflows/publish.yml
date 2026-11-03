@@ -17,6 +17,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -36,5 +37,3 @@ jobs:
         run: npm pkg set version="0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
 
       - run: npm publish --tag latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.PAT }}
