@@ -1,0 +1,40 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/publish.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-latest
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run typecheck
+
+      - name: Set CI version
+        run: npm pkg set version="0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+
+      - run: npm publish --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PAT }}
