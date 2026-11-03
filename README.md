@@ -23,6 +23,41 @@ Restart OpenCode after changing global plugin configuration.
 
 The meter always follows the selected model's provider. It does not reuse usage data from another provider.
 
+## UI examples
+
+With an OpenRouter model selected, a finite API-key cap appears above the composer:
+
+```text
+OpenRouter: ━━━─────── 30% $3.00
+```
+
+`/usage` opens the provider details dialog:
+
+```text
+                 OpenRouter
+
+          ┌─────────────────────────┐
+          │ Key limit · 30% ·       │
+          │ $3.00 / $10.00          │
+          │ ━━━━━━──────────────────│
+          └─────────────────────────┘
+
+          ┌─────────────────────────┐
+          │ Account credits         │
+          │ $7.00 remaining         │
+          │ $10.00 purchased        │
+          │ $3.00 used total        │
+          └─────────────────────────┘
+
+              [ Refresh ] [ Account ]
+```
+
+With an OpenAI model selected, rate-limit windows render in the same location:
+
+```text
+OpenAI: ━━━━━───── S 50% 1h 30m · ━━──────── W 20% 4d 12h
+```
+
 ## Local development
 
 OpenCode's local plugin discovery requires real files under its plugin directory. Copy the source after every change:
