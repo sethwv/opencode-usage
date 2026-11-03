@@ -11,6 +11,14 @@
   "files": ["src"],
   "keywords": ["opencode", "plugin", "codex", "chatgpt", "usage"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sethwv/opencode-usage"
+  },
+  "bugs": {
+    "url": "https://github.com/sethwv/opencode-usage/issues"
+  },
+  "homepage": "https://github.com/sethwv/opencode-usage#readme",
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
