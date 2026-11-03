@@ -25,41 +25,31 @@ Restart OpenCode after changing global plugin configuration.
 ## What it renders
 
 - Compact usage meters above the composer for available usage windows.
-- A provider details dialog containing fuller bars, exact reset times, and remaining time.
-- Provider-defined sections, such as banked reset credits and individual expiry times.
-- Only the actions supported by that provider, such as refresh, opening a usage dashboard, or redeeming a reset.
+- A details dialog containing fuller bars, exact reset times, and remaining time.
+- Adapter-defined sections for account or subscription details.
+- Adapter-defined actions, including actions that require confirmation.
 
 The plugin hides its meter when the selected provider has no registered adapter. It never shows one provider's quota while another provider is selected.
 
-## Provider support
-
-| Provider ID | Authentication | Windows | Extra sections | Actions |
-| --- | --- | --- | --- | --- |
-| `openai` | ChatGPT OAuth | Weekly and session | Banked reset credits | Dashboard and reset redemption |
-
-The OpenAI adapter reuses OpenCode's active connection server-side. Credentials are never sent to the TUI, saved by the plugin, or logged.
-
 ## Adding a provider
 
-Add a provider adapter under `src/adapters/providers/` and register it in `src/index.ts`. The bundled OpenAI adapter is `src/adapters/providers/openai.ts`.
+Add an adapter under `src/adapters/providers/` and register it in `src/adapters/providers/index.ts`.
 
 ```ts
 type UsageAdapter = {
   id: string
   name: string
-  supports: ReadonlySet<"dashboard" | "reset">
   load(): Promise<UsageSnapshot>
-  openDashboard?(): Promise<void>
-  consumeReset?(): Promise<string>
+  runAction(actionID: string): Promise<UsageActionResult>
 }
 ```
 
-`load()` returns a provider-neutral `UsageSnapshot` containing zero or more usage windows and optional detail sections such as banked resets. The shared RPC, cache, composer meter, and dialog stay unchanged when a provider is added.
+`load()` returns a normalized snapshot containing usage windows, optional sections, and action descriptors. The shared RPC, cache, composer meter, and dialog stay unchanged when an adapter is added.
 
 Use the OpenCode provider ID as the adapter ID. The TUI sends the active model's provider ID to the server, which selects the matching adapter.
 
-## Security and provider APIs
+## Adapter boundaries
 
-Each adapter owns its authentication and network behavior. It should resolve credentials only in the server plugin, send them only to its provider, and return normalized usage data to the TUI.
+Each adapter owns its authentication, network behavior, detail sections, and actions. It should resolve credentials only in the server plugin, send them only to the associated service, and return normalized data to the TUI.
 
-The bundled OpenAI adapter uses undocumented ChatGPT backend endpoints for subscription usage and reset credits. Those endpoints can change or become unavailable. Redeeming a reset is irreversible, so the UI requires two activations before the request is sent.
+The shared code does not interpret adapter-specific responses or action IDs. It only renders the descriptors supplied by the adapter and sends a selected action ID back to that adapter.

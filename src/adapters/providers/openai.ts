@@ -1,12 +1,11 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { type UsageWindow } from "../../usage/types.js"
+import { formatExactReset, type UsageWindow } from "../../usage/types.js"
 import type { UsageAdapter } from "../types.js"
 
 export const metadata = {
   id: "openai",
   name: "ChatGPT",
-  supports: ["dashboard", "reset"] as const,
 }
 
 // Implementation
@@ -49,7 +48,6 @@ export function createOpenAIAdapter(resolveOAuth: ResolveOAuth): UsageAdapter {
   return {
     id: metadata.id,
     name: metadata.name,
-    supports: new Set(metadata.supports),
     async load() {
       const auth = await headers()
       const response = await fetch(`${baseURL}/usage`, { headers: auth })
@@ -64,19 +62,30 @@ export function createOpenAIAdapter(resolveOAuth: ResolveOAuth): UsageAdapter {
         : []
       const bankedResets = credits.filter((credit) => credit.status === "available").map((credit) => {
         const expiresAt = typeof credit.expires_at === "string" ? Date.parse(credit.expires_at) : NaN
-        return Number.isFinite(expiresAt) ? { expiresAt } : {}
+        return Number.isFinite(expiresAt) ? `Reset expires ${formatExactReset(expiresAt)}` : "Reset expiry not reported"
       })
-      return { status: "ready", windows, bankedResetCount, bankedResets: bankedResets.length ? bankedResets : undefined, refreshedAt: Date.now() }
+      return {
+        status: "ready",
+        windows,
+        sections: bankedResetCount ? [{ id: "banked-resets", title: "Banked resets", lines: [`${bankedResetCount} available`, ...bankedResets] }] : [],
+        actions: [
+          { id: "dashboard", label: "Usage" },
+          ...(bankedResetCount ? [{ id: "reset", label: `Reset (${bankedResetCount})`, confirmLabel: "Confirm reset", confirmationMessage: "Click Confirm reset again to apply the banked reset.", refresh: true }] : []),
+        ],
+        refreshedAt: Date.now(),
+      }
     },
-    async openDashboard() {
-      const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open"
-      await execFileAsync(command, process.platform === "win32" ? ["/c", "start", "", "https://chatgpt.com/codex/settings/usage"] : ["https://chatgpt.com/codex/settings/usage"])
-    },
-    async consumeReset() {
+    async runAction(actionID) {
+      if (actionID === "dashboard") {
+        const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open"
+        await execFileAsync(command, process.platform === "win32" ? ["/c", "start", "", "https://chatgpt.com/codex/settings/usage"] : ["https://chatgpt.com/codex/settings/usage"])
+        return { status: "success", message: "Opened usage dashboard." }
+      }
+      if (actionID !== "reset") return { status: "unsupported" }
       const response = await fetch(`${baseURL}/rate-limit-reset-credits/consume`, { method: "POST", headers: { ...(await headers()), "Content-Type": "application/json" }, body: JSON.stringify({ redeem_request_id: crypto.randomUUID() }) })
-      if (!response.ok) return "failed"
+      if (!response.ok) return { status: "failed" }
       const body = await response.json() as { code?: unknown }
-      return typeof body.code === "string" ? body.code : "failed"
+      return body.code === "reset" ? { status: "success", message: "Banked reset applied." } : { status: "failed" }
     },
   }
 }

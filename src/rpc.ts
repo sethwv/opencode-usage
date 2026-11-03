@@ -19,19 +19,38 @@ const snapshot = {
     providerID: { type: "string" },
     status: { type: "string", enum: ["ready", "stale", "unavailable"] },
     windows: { type: "array", items: window },
-    bankedResetCount: { type: "number" },
-    bankedResets: {
+    sections: {
       type: "array",
       items: {
         type: "object",
-        properties: { expiresAt: { type: "number" } },
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          lines: { type: "array", items: { type: "string" } },
+        },
+        required: ["id", "title", "lines"],
+        additionalProperties: false,
+      },
+    },
+    actions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          confirmLabel: { type: "string" },
+          confirmationMessage: { type: "string" },
+          refresh: { type: "boolean" },
+        },
+        required: ["id", "label"],
         additionalProperties: false,
       },
     },
     refreshedAt: { type: "number" },
     error: { type: "string" },
   },
-  required: ["providerID", "status", "windows"],
+  required: ["providerID", "status", "windows", "sections", "actions"],
   additionalProperties: false,
 } as const
 
@@ -41,8 +60,8 @@ const providerInput = {
   additionalProperties: false,
 } as const
 
-export const CodexUsage = Rpc.define({
-  id: "codex-usage",
+export const Usage = Rpc.define({
+  id: "opencode-usage",
   methods: {
     get: {
       input: providerInput,
@@ -52,21 +71,17 @@ export const CodexUsage = Rpc.define({
       input: providerInput,
       output: snapshot,
     },
-    openDashboard: {
-      input: providerInput,
-      output: {
+    runAction: {
+      input: {
         type: "object",
-        properties: { opened: { type: "boolean" } },
-        required: ["opened"],
+        properties: { ...providerInput.properties, actionID: { type: "string" } },
+        required: ["actionID"],
         additionalProperties: false,
       },
-    },
-    consumeReset: {
-      input: providerInput,
       output: {
         type: "object",
-        properties: { outcome: { type: "string" } },
-        required: ["outcome"],
+        properties: { status: { type: "string", enum: ["success", "failed", "unsupported"] }, message: { type: "string" } },
+        required: ["status"],
         additionalProperties: false,
       },
     },

@@ -9,7 +9,7 @@
     "./rpc": "./src/rpc.ts"
   },
   "files": ["src"],
-  "keywords": ["opencode", "plugin", "codex", "chatgpt", "usage"],
+  "keywords": ["opencode", "plugin", "usage", "subscription"],
   "license": "MIT",
   "repository": {
     "type": "git",

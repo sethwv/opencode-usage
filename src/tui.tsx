@@ -1,14 +1,14 @@
 import { Plugin } from "@opencode/plugin/tui"
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
-import { CodexUsage } from "./rpc.js"
-import { emptySnapshot, formatBar, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageSnapshot } from "./usage/types.js"
+import { Usage } from "./rpc.js"
+import { emptySnapshot, formatBar, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageAction, type UsageSnapshot } from "./usage/types.js"
 
 export default Plugin.define({
-  id: "codex-usage.tui",
+  id: "opencode-usage.tui",
   setup(context) {
-    const usage = context.client.rpc(CodexUsage)
+    const usage = context.client.rpc(Usage)
     const [snapshot, setSnapshot] = createSignal<UsageSnapshot>(emptySnapshot())
-    const [resetArmed, setResetArmed] = createSignal(false)
+    const [armedActionID, setArmedActionID] = createSignal<string>()
     const activeProviderID = () => context.ui.model.current()?.providerID
     const providerInput = (providerID = activeProviderID()) => ({ providerID })
 
@@ -23,41 +23,35 @@ export default Plugin.define({
 
     createEffect(() => {
       const providerID = activeProviderID()
-      setResetArmed(false)
+      setArmedActionID(undefined)
       setSnapshot(emptySnapshot(providerID))
       void load(false, providerID)
     })
 
-    const openDashboard = async () => {
-      const result = await usage.openDashboard(providerInput())
-      if (!(result as { opened: boolean }).opened) {
-        context.ui.toast.show({ message: "Could not open the Codex usage dashboard.", variant: "error" })
-      }
-    }
-
-    const useReset = () => {
-      if (!resetArmed()) {
-        setResetArmed(true)
-        context.ui.toast.show({ message: "Click Use banked reset again to confirm.", variant: "warning" })
+    const runAction = (action: UsageAction) => {
+      if (action.confirmationMessage && armedActionID() !== action.id) {
+        setArmedActionID(action.id)
+        context.ui.toast.show({ message: action.confirmationMessage, variant: "warning" })
         return
       }
 
-      setResetArmed(false)
-      void usage.consumeReset(providerInput()).then(async (result) => {
-        const outcome = (result as { outcome: string }).outcome
-        if (outcome === "reset") {
-          context.ui.toast.show({ message: "Banked reset applied.", variant: "success" })
+      setArmedActionID(undefined)
+      void usage.runAction({ ...providerInput(), actionID: action.id }).then(async (result) => {
+        const outcome = result as { status: "success" | "failed" | "unsupported"; message?: string }
+        if (outcome.status === "success") {
+          if (outcome.message) context.ui.toast.show({ message: outcome.message, variant: "success" })
+          if (!action.refresh) return
           await load(true)
           context.ui.dialog.clear()
           if (snapshot().windows.length > 0) showDetails()
           return
         }
-        context.ui.toast.show({ message: `Could not apply reset: ${outcome.replaceAll("_", " ")}.`, variant: "error" })
-      }).catch(() => context.ui.toast.show({ message: "Could not apply reset.", variant: "error" }))
+        context.ui.toast.show({ message: outcome.message ?? "Could not complete action.", variant: "error" })
+      }).catch(() => context.ui.toast.show({ message: "Could not complete action.", variant: "error" }))
     }
 
     const showDetails = () => {
-      setResetArmed(false)
+      setArmedActionID(undefined)
       const refresh = () => {
         context.ui.dialog.clear()
         void load(true).then(() => {
@@ -83,7 +77,7 @@ export default Plugin.define({
       context.ui.dialog.set({ size: "medium", centered: true })
       context.ui.dialog.show(() => (
         <box flexDirection="column" alignItems="center" padding={1} gap={1}>
-          <text fg={muted}>Codex usage</text>
+          <text fg={muted}>Usage</text>
           <For each={snapshot().windows}>
             {(window) => (
               <box width={cardWidth()} flexDirection="column" alignItems="center" border borderColor={muted} paddingLeft={1} paddingRight={1}>
@@ -93,21 +87,19 @@ export default Plugin.define({
               </box>
             )}
           </For>
-          <Show when={(snapshot().bankedResetCount ?? 0) > 0}>
-            <box width={cardWidth()} flexDirection="column" alignItems="center" border borderColor={muted} paddingLeft={1} paddingRight={1}>
-              <text>Banked resets</text>
-              <text fg={muted}>{`${snapshot().bankedResetCount} available`}</text>
-              <For each={snapshot().bankedResets ?? []}>
-                {(reset, index) => (
-                  <text fg={muted}>{`Reset ${index() + 1}: ${reset.expiresAt ? `expires ${formatExactReset(reset.expiresAt)}` : "no expiry reported"}`}</text>
-                )}
-              </For>
-            </box>
-          </Show>
+          <For each={snapshot().sections}>
+            {(section) => (
+              <box width={cardWidth()} flexDirection="column" alignItems="center" border borderColor={muted} paddingLeft={1} paddingRight={1}>
+                <text>{section.title}</text>
+                <For each={section.lines}>{(line) => <text fg={muted}>{line}</text>}</For>
+              </box>
+            )}
+          </For>
           <box flexDirection="row" justifyContent="center" gap={1}>
             {action("[ Refresh ]", refresh)}
-            {action("[ Usage ]", () => void openDashboard())}
-            {(snapshot().bankedResetCount ?? 0) > 0 && action(resetArmed() ? "[ Confirm reset ]" : `[ Reset (${snapshot().bankedResetCount}) ]`, useReset)}
+            <For each={snapshot().actions}>
+              {(item) => action(`[ ${armedActionID() === item.id ? item.confirmLabel ?? item.label : item.label} ]`, () => runAction(item))}
+            </For>
           </box>
           <text fg={muted}>Esc to close</text>
         </box>
@@ -118,9 +110,9 @@ export default Plugin.define({
       mode: "global",
       commands: [
         {
-          id: "codex-usage.show",
-          title: "Show Codex usage",
-          group: "Codex usage",
+          id: "usage.show",
+          title: "Show usage",
+          group: "Usage",
           palette: true,
           slash: { name: "usage" },
           run: () => {
@@ -139,15 +131,8 @@ export default Plugin.define({
       formatDetailBar(window.usedPercent),
       `Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`,
     ]
-    const bankedResetLines = () => [
-      "Banked resets",
-      `${snapshot().bankedResetCount} available`,
-      ...(snapshot().bankedResets ?? []).map((reset, index) =>
-        `Reset ${index + 1}: ${reset.expiresAt ? `expires ${formatExactReset(reset.expiresAt)}` : "no expiry reported"}`,
-      ),
-    ]
     const cardWidth = () => {
-      const lines = [...snapshot().windows.flatMap(windowLines), ...(snapshot().bankedResetCount ? bankedResetLines() : [])]
+      const lines = [...snapshot().windows.flatMap(windowLines), ...snapshot().sections.flatMap((section) => [section.title, ...section.lines])]
       return Math.max(...lines.map((line) => [...line].length)) + 4
     }
 

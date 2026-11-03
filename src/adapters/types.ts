@@ -1,13 +1,11 @@
-import type { UsageSnapshot } from "../usage/types.js"
+import type { UsageAction, UsageSnapshot } from "../usage/types.js"
 
-export type UsageAction = "dashboard" | "reset"
 export type AdapterUsageSnapshot = Omit<UsageSnapshot, "providerID">
+export type UsageActionResult = { status: "success" | "failed" | "unsupported"; message?: string }
 
 export type UsageAdapter = {
   id: string
   name: string
-  supports: ReadonlySet<UsageAction>
   load(): Promise<AdapterUsageSnapshot>
-  openDashboard?(): Promise<void>
-  consumeReset?(): Promise<string>
+  runAction(actionID: UsageAction["id"]): Promise<UsageActionResult>
 }

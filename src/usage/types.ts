@@ -6,17 +6,31 @@ export type UsageWindow = {
   durationSeconds?: number
 }
 
+export type UsageSection = {
+  id: string
+  title: string
+  lines: string[]
+}
+
+export type UsageAction = {
+  id: string
+  label: string
+  confirmLabel?: string
+  confirmationMessage?: string
+  refresh?: boolean
+}
+
 export type UsageSnapshot = {
   providerID: string
   status: "ready" | "stale" | "unavailable"
   windows: UsageWindow[]
-  bankedResetCount?: number
-  bankedResets?: Array<{ expiresAt?: number }>
+  sections: UsageSection[]
+  actions: UsageAction[]
   refreshedAt?: number
   error?: string
 }
 
-export const emptySnapshot = (providerID = ""): UsageSnapshot => ({ providerID, status: "unavailable", windows: [] })
+export const emptySnapshot = (providerID = ""): UsageSnapshot => ({ providerID, status: "unavailable", windows: [], sections: [], actions: [] })
 
 export function formatBar(usedPercent: number) {
   const filled = Math.max(0, Math.min(10, Math.round(usedPercent / 10)))

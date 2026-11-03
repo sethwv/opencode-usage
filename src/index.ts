@@ -1,7 +1,7 @@
 import { Plugin } from "@opencode/plugin"
-import { createOpenAIAdapter } from "./adapters/providers/openai.js"
+import { createProviderAdapters } from "./adapters/providers/index.js"
 import { createAdapterRegistry } from "./adapters/registry.js"
-import { CodexUsage } from "./rpc.js"
+import { Usage } from "./rpc.js"
 import { emptySnapshot, type UsageSnapshot } from "./usage/types.js"
 
 const refreshInterval = 60_000
@@ -13,15 +13,9 @@ type CacheEntry = {
 }
 
 export default Plugin.define({
-  id: "codex-usage",
+  id: "opencode-usage",
   async setup(ctx) {
-    const adapters = createAdapterRegistry([
-      createOpenAIAdapter(async () => {
-        const connection = await ctx.integration.connection.active("openai")
-        const credential = connection ? await ctx.integration.connection.resolve(connection) : undefined
-        return credential?.type === "oauth" ? credential : undefined
-      }),
-    ])
+    const adapters = createAdapterRegistry(createProviderAdapters(ctx))
     const cache = new Map<string, CacheEntry>()
     const provider = (input: unknown) => (input as { providerID?: string }).providerID
     const entryFor = (providerID?: string) => {
@@ -34,22 +28,18 @@ export default Plugin.define({
       return entry
     }
 
-    const registration = await ctx.rpc.register(CodexUsage, {
+    const registration = await ctx.rpc.register(Usage, {
       get: async (input) => refresh(false, provider(input)),
       refresh: async (input) => refresh(true, provider(input)),
-      openDashboard: async (input) => {
+      runAction: async (input) => {
         const adapter = adapters.get(provider(input))
-        if (!adapter?.supports.has("dashboard") || !adapter.openDashboard) return { opened: false }
-        try { await adapter.openDashboard(); return { opened: true } } catch { return { opened: false } }
-      },
-      consumeReset: async (input) => {
-        const adapter = adapters.get(provider(input))
-        if (!adapter?.supports.has("reset") || !adapter.consumeReset) return { outcome: "unsupported_provider" }
+        const actionID = (input as { actionID: string }).actionID
+        if (!adapter) return { status: "unsupported" as const }
         try {
-          const outcome = await adapter.consumeReset()
-          if (outcome === "reset") void refresh(true, adapter.id)
-          return { outcome }
-        } catch { return { outcome: "failed" } }
+          const result = await adapter.runAction(actionID)
+          if (result.status === "success") void refresh(true, adapter.id)
+          return result
+        } catch { return { status: "failed" as const } }
       },
     })
 
