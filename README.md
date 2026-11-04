@@ -14,6 +14,38 @@ Add the package to global OpenCode configuration:
 
 Restart OpenCode after changing global plugin configuration.
 
+## Configuration
+
+Configure the plugin through its `options` object:
+
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "@sethwv/opencode-usage",
+      "options": {
+        "composer": {
+          "showProviderName": true,
+          "thresholds": {
+            "warning": 50,
+            "alert": 75,
+            "critical": 90,
+          },
+        },
+        "providers": {
+          "openrouter": { "enabled": true },
+          "openai": { "enabled": true },
+        },
+      },
+    },
+  ],
+}
+```
+
+- `composer.showProviderName` controls the provider prefix above the composer.
+- `composer.thresholds` controls when meters become warning, orange, and critical colors. Values must be ordered from low to high and fall between 0 and 100.
+- `providers.<providerID>.enabled` disables usage collection and display for a provider.
+
 ## Supported providers
 
 | Provider | Credential | Composer meter | Details |

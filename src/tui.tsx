@@ -1,12 +1,14 @@
 import { Plugin } from "@opencode/plugin/tui"
 import { RGBA } from "@opentui/core"
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { parseUsageConfig } from "./config.js"
 import { Usage } from "./rpc.js"
 import { barSegments, emptySnapshot, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageAction, type UsageSnapshot } from "./usage/types.js"
 
 export default Plugin.define({
   id: "opencode-usage.tui",
   setup(context) {
+    const config = parseUsageConfig(context.options)
     const usage = context.client.rpc(Usage)
     const [snapshot, setSnapshot] = createSignal<UsageSnapshot>(emptySnapshot())
     const [armedActionID, setArmedActionID] = createSignal<string>()
@@ -128,15 +130,12 @@ export default Plugin.define({
     }))
 
     const muted = (context.theme as any).text?.muted ?? (context.theme as any).textMuted
-    const composerBackground = (context.theme as any).background?.raised?.base
-    const meterBackground = composerBackground
-      ? RGBA.fromValues(composerBackground.r * 0.93, composerBackground.g * 0.93, composerBackground.b * 0.93, composerBackground.a)
-      : undefined
     const warning = (context.theme as any).text?.feedback?.warning?.base ?? muted
     const error = (context.theme as any).text?.feedback?.error?.base ?? warning
     const orange = RGBA.fromValues((warning.r + error.r) / 2, (warning.g + error.g) / 2, (warning.b + error.b) / 2, (warning.a + error.a) / 2)
     const barColor = (usedPercent: number) => {
-      const color = usedPercent > 90 ? error : usedPercent > 75 ? orange : usedPercent > 50 ? warning : muted
+      const { warning: warningThreshold, alert, critical } = config.composer.thresholds
+      const color = usedPercent > critical ? error : usedPercent > alert ? orange : usedPercent > warningThreshold ? warning : muted
       return RGBA.fromValues(color.r * 0.85 + muted.r * 0.15, color.g * 0.85 + muted.g * 0.15, color.b * 0.85 + muted.b * 0.15, color.a * 0.85 + muted.a * 0.15)
     }
     const dimBarColor = (usedPercent: number) => {
@@ -165,9 +164,9 @@ export default Plugin.define({
 
       return (
         <Show when={snapshot().windows.length > 0}>
-          <box width="100%" height={1} flexDirection="row" backgroundColor={meterBackground} shouldFill>
+          <box width="100%" height={1} flexDirection="row">
             <box width="100%" height={1} flexDirection="row" justifyContent="center" paddingLeft={1} paddingRight={1}>
-              <Show when={snapshot().providerName}>
+              <Show when={config.composer.showProviderName && snapshot().providerName}>
                 <text fg={muted}>{`${snapshot().providerName}: `}</text>
               </Show>
               <For each={snapshot().windows}>

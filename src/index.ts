@@ -1,6 +1,7 @@
 import { Plugin } from "@opencode/plugin"
 import { createProviderAdapters } from "./adapters/providers/index.js"
 import { createAdapterRegistry } from "./adapters/registry.js"
+import { parseUsageConfig, providerEnabled } from "./config.js"
 import { Usage } from "./rpc.js"
 import { emptySnapshot, type UsageSnapshot } from "./usage/types.js"
 
@@ -15,7 +16,8 @@ type CacheEntry = {
 export default Plugin.define({
   id: "opencode-usage",
   async setup(ctx) {
-    const adapters = createAdapterRegistry(createProviderAdapters(ctx))
+    const config = parseUsageConfig(ctx.options)
+    const adapters = createAdapterRegistry(createProviderAdapters(ctx).filter((adapter) => providerEnabled(config, adapter.id)))
     const cache = new Map<string, CacheEntry>()
     const provider = (input: unknown) => (input as { providerID?: string }).providerID
     const entryFor = (providerID?: string) => {
