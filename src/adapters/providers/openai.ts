@@ -35,7 +35,8 @@ function accountID(credential: OAuthCredential) {
 function window(raw: RawWindow | null | undefined, id: string): UsageWindow | undefined {
   if (!raw || typeof raw.used_percent !== "number" || typeof raw.reset_at !== "number") return undefined
   const durationSeconds = typeof raw.limit_window_seconds === "number" && raw.limit_window_seconds > 0 ? raw.limit_window_seconds : undefined
-  return { id, label: durationSeconds && durationSeconds >= 86_400 ? "W" : "S", usedPercent: Math.max(0, Math.min(100, raw.used_percent)), resetAt: raw.reset_at * 1000, durationSeconds }
+  const weekly = Boolean(durationSeconds && durationSeconds >= 86_400)
+  return { id, kind: weekly ? "week" : "session", label: weekly ? "W" : "S", usedPercent: Math.max(0, Math.min(100, raw.used_percent)), resetAt: raw.reset_at * 1000, durationSeconds }
 }
 
 export function createOpenAIAdapter(resolveOAuth: ResolveOAuth): UsageAdapter {
@@ -48,6 +49,10 @@ export function createOpenAIAdapter(resolveOAuth: ResolveOAuth): UsageAdapter {
   return {
     id: metadata.id,
     name: metadata.name,
+    meterKinds: ["session", "week"],
+    async isAvailable() {
+      return Boolean(await resolveOAuth())
+    },
     async load() {
       const auth = await headers()
       const response = await fetch(`${baseURL}/usage`, { headers: auth })

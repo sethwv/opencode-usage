@@ -6,5 +6,8 @@ export function createAdapterRegistry(adapters: readonly UsageAdapter[]) {
     get(providerID?: string) {
       return byID.get(providerID ?? "")
     },
+    list() {
+      return [...byID.values()]
+    },
   }
 }

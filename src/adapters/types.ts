@@ -6,6 +6,8 @@ export type UsageActionResult = { status: "success" | "failed" | "unsupported"; 
 export type UsageAdapter = {
   id: string
   name: string
+  meterKinds: string[]
+  isAvailable(): Promise<boolean>
   load(): Promise<AdapterUsageSnapshot>
   runAction(actionID: UsageAction["id"]): Promise<UsageActionResult>
 }

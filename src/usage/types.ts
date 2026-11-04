@@ -1,5 +1,6 @@
 export type UsageWindow = {
   id: string
+  kind?: string
   label: string
   title?: string
   usedPercent: number

@@ -49,6 +49,10 @@ export function createOpenRouterAdapter(resolveKey: ResolveKey): UsageAdapter {
   return {
     id: metadata.id,
     name: metadata.name,
+    meterKinds: ["key-limit"],
+    async isAvailable() {
+      return Boolean(await resolveKey())
+    },
     async load() {
       const auth = await headers()
       const [keyResponse, creditsResponse] = await Promise.all([
@@ -68,7 +72,7 @@ export function createOpenRouterAdapter(resolveKey: ResolveKey): UsageAdapter {
       const label = typeof key.label === "string" && key.label ? key.label : "Active key"
       const reset = typeof key.limit_reset === "string" && key.limit_reset ? key.limit_reset : undefined
       const windows = limit !== undefined && remaining !== undefined && limit > 0
-        ? [{ id: "key-limit", label: "", title: "Key limit", usedPercent: Math.max(0, Math.min(100, ((limit - remaining) / limit) * 100)), valueLabel: `${currency(limit - remaining)} / ${currency(limit)}`, composerValueLabel: currency(limit - remaining) }]
+        ? [{ id: "key-limit", kind: "key-limit", label: "", title: "Key limit", usedPercent: Math.max(0, Math.min(100, ((limit - remaining) / limit) * 100)), valueLabel: `${currency(limit - remaining)} / ${currency(limit)}`, composerValueLabel: currency(limit - remaining) }]
         : []
       const keyLines = [
         label,

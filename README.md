@@ -26,11 +26,19 @@ Configure the plugin through its `options` object:
       "options": {
         "composer": {
           "showProviderName": true,
+          "meterLabel": "short",
           "thresholds": {
             "warning": 50,
             "alert": 75,
             "critical": 90,
           },
+          "meters": {
+            "session": { "enabled": true },
+            "week": { "enabled": true },
+            "key-limit": { "enabled": true },
+            "tokens": { "enabled": false },
+          },
+          "source": { "mode": "current-model" },
         },
         "providers": {
           "openrouter": { "enabled": true },
@@ -43,8 +51,15 @@ Configure the plugin through its `options` object:
 ```
 
 - `composer.showProviderName` controls the provider prefix above the composer.
+- `composer.meterLabel` controls compact meter labels: `short` uses adapter abbreviations, `word` uses full names, and `none` hides labels.
 - `composer.thresholds` controls when meters become warning, orange, and critical colors. Values must be ordered from low to high and fall between 0 and 100.
+- `composer.meters.<kind>.enabled` controls a meter type everywhere in the TUI. Current kinds are `session`, `week`, and `key-limit`. Future adapters can add kinds such as `tokens`.
+- `composer.source` chooses which provider’s usage to show. Use `{ "mode": "current-model" }` to follow the selected model, or `{ "mode": "provider", "providerID": "openrouter" }` to pin a provider.
 - `providers.<providerID>.enabled` disables usage collection and display for a provider.
+
+`/usage` shows tabs for each enabled provider with an active OpenCode connection, plus **Settings**. Provider tabs let you inspect a provider without changing the composer meter. The Settings tab can toggle the provider prefix and known meter kinds, or pin usage to the current provider. These display preferences are stored locally by OpenCode and override their file-configured defaults. Provider enablement and threshold values remain file configuration.
+
+Use Left and Right to switch dialog tabs. In Settings, use Up and Down to select a row and Enter to change it. Provider tabs support `r` to refresh and number keys to run visible actions.
 
 ## Supported providers
 

@@ -31,6 +31,10 @@ export default Plugin.define({
     }
 
     const registration = await ctx.rpc.register(Usage, {
+      providers: async () => {
+        const availability = await Promise.all(adapters.list().map(async (adapter) => ({ adapter, available: await adapter.isAvailable().catch(() => false) })))
+        return availability.filter((entry) => entry.available).map(({ adapter }) => ({ id: adapter.id, name: adapter.name, meterKinds: adapter.meterKinds }))
+      },
       get: async (input) => refresh(false, provider(input)),
       refresh: async (input) => refresh(true, provider(input)),
       runAction: async (input) => {

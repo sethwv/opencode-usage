@@ -4,6 +4,7 @@ const window = {
   type: "object",
   properties: {
     id: { type: "string" },
+    kind: { type: "string" },
     label: { type: "string" },
     title: { type: "string" },
     usedPercent: { type: "number" },
@@ -64,9 +65,23 @@ const providerInput = {
   additionalProperties: false,
 } as const
 
+const providers = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: { id: { type: "string" }, name: { type: "string" }, meterKinds: { type: "array", items: { type: "string" } } },
+    required: ["id", "name", "meterKinds"],
+    additionalProperties: false,
+  },
+} as const
+
 export const Usage = Rpc.define({
   id: "opencode-usage",
   methods: {
+    providers: {
+      input: { type: "object", additionalProperties: false },
+      output: providers,
+    },
     get: {
       input: providerInput,
       output: snapshot,
