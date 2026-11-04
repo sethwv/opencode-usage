@@ -2,7 +2,7 @@ import { Plugin } from "@opencode/plugin/tui"
 import { RGBA } from "@opentui/core"
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { Usage } from "./rpc.js"
-import { emptySnapshot, formatBar, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageAction, type UsageSnapshot } from "./usage/types.js"
+import { barSegments, emptySnapshot, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageAction, type UsageSnapshot } from "./usage/types.js"
 
 export default Plugin.define({
   id: "opencode-usage.tui",
@@ -83,7 +83,10 @@ export default Plugin.define({
             {(window) => (
               <box width={cardWidth()} flexDirection="column" alignItems="center" border borderColor={muted} paddingLeft={1} paddingRight={1}>
                 <text>{`${windowName(window)} · ${Math.round(window.usedPercent)}%${window.valueLabel ? ` · ${window.valueLabel}` : ""}`}</text>
-                <text>{formatDetailBar(window.usedPercent)}</text>
+                <box flexDirection="row">
+                  <text fg={barColor(window.usedPercent)}>{barSegments(window.usedPercent, 20).filled}</text>
+                  <text fg={dimBarColor(window.usedPercent)}>{barSegments(window.usedPercent, 20).empty}</text>
+                </box>
                 {window.resetAt && <text fg={muted}>{`Resets ${formatExactReset(window.resetAt)} (${formatFullRemaining(window.resetAt)} remaining)`}</text>}
               </box>
             )}
@@ -127,8 +130,19 @@ export default Plugin.define({
     const muted = (context.theme as any).text?.muted ?? (context.theme as any).textMuted
     const composerBackground = (context.theme as any).background?.raised?.base
     const meterBackground = composerBackground
-      ? RGBA.fromInts(Math.round(composerBackground.r * 0.94), Math.round(composerBackground.g * 0.94), Math.round(composerBackground.b * 0.94), composerBackground.a)
+      ? RGBA.fromValues(composerBackground.r * 0.93, composerBackground.g * 0.93, composerBackground.b * 0.93, composerBackground.a)
       : undefined
+    const warning = (context.theme as any).text?.feedback?.warning?.base ?? muted
+    const error = (context.theme as any).text?.feedback?.error?.base ?? warning
+    const orange = RGBA.fromValues((warning.r + error.r) / 2, (warning.g + error.g) / 2, (warning.b + error.b) / 2, (warning.a + error.a) / 2)
+    const barColor = (usedPercent: number) => {
+      const color = usedPercent > 90 ? error : usedPercent > 75 ? orange : usedPercent > 50 ? warning : muted
+      return RGBA.fromValues(color.r * 0.85 + muted.r * 0.15, color.g * 0.85 + muted.g * 0.15, color.b * 0.85 + muted.b * 0.15, color.a * 0.85 + muted.a * 0.15)
+    }
+    const dimBarColor = (usedPercent: number) => {
+      const color = barColor(usedPercent)
+      return RGBA.fromValues(color.r * 0.4 + muted.r * 0.6, color.g * 0.4 + muted.g * 0.6, color.b * 0.4 + muted.b * 0.6, color.a * 0.4 + muted.a * 0.6)
+    }
     const windowName = (window: { label: string; title?: string }) => window.title ?? (window.label === "W" ? "Week" : "Session")
     const windowLines = (window: UsageSnapshot["windows"][number]) => [
       `${windowName(window)} · ${Math.round(window.usedPercent)}%${window.valueLabel ? ` · ${window.valueLabel}` : ""}`,
@@ -166,7 +180,10 @@ export default Plugin.define({
                         showDetails()
                       }}
                     >
-                      <text fg={muted}>{`${index() > 0 ? "\u00a0" : ""}${formatBar(window.usedPercent)}${window.label ? ` ${window.label}` : ""} ${Math.round(window.usedPercent)}%${window.composerValueLabel ? ` ${window.composerValueLabel}` : ""}${window.resetAt ? ` ${formatCompactRemaining(window.resetAt)}` : ""}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
+                      <text fg={muted}>{index() > 0 ? "\u00a0" : ""}</text>
+                      <text fg={barColor(window.usedPercent)}>{barSegments(window.usedPercent).filled}</text>
+                      <text fg={dimBarColor(window.usedPercent)}>{barSegments(window.usedPercent).empty}</text>
+                      <text fg={muted}>{`${window.label ? ` ${window.label}` : ""} ${Math.round(window.usedPercent)}%${window.composerValueLabel ? ` ${window.composerValueLabel}` : ""}${window.resetAt ? ` ${formatCompactRemaining(window.resetAt)}` : ""}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
                     </box>
                   </>
                 )}

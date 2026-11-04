@@ -37,13 +37,18 @@ export type UsageSnapshot = {
 export const emptySnapshot = (providerID = "", providerName = ""): UsageSnapshot => ({ providerID, providerName, status: "unavailable", windows: [], sections: [], actions: [] })
 
 export function formatBar(usedPercent: number) {
-  const filled = Math.max(0, Math.min(10, Math.round(usedPercent / 10)))
-  return `${"━".repeat(filled)}${"─".repeat(10 - filled)}`
+  const { filled, empty } = barSegments(usedPercent)
+  return `${filled}${empty}`
 }
 
 export function formatDetailBar(usedPercent: number, width = 20) {
+  const { filled, empty } = barSegments(usedPercent, width)
+  return `${filled}${empty}`
+}
+
+export function barSegments(usedPercent: number, width = 10) {
   const filled = Math.max(0, Math.min(width, Math.round((usedPercent / 100) * width)))
-  return `${"━".repeat(filled)}${"─".repeat(width - filled)}`
+  return { filled: "━".repeat(filled), empty: "─".repeat(width - filled) }
 }
 
 export function formatCompactRemaining(resetAt: number, now = Date.now()) {
