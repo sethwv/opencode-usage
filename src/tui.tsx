@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode/plugin/tui"
+import { RGBA } from "@opentui/core"
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { Usage } from "./rpc.js"
 import { emptySnapshot, formatBar, formatCompactRemaining, formatDetailBar, formatExactReset, formatFullRemaining, type UsageAction, type UsageSnapshot } from "./usage/types.js"
@@ -124,6 +125,10 @@ export default Plugin.define({
     }))
 
     const muted = (context.theme as any).text?.muted ?? (context.theme as any).textMuted
+    const composerBackground = (context.theme as any).background?.raised?.base
+    const meterBackground = composerBackground
+      ? RGBA.fromInts(Math.round(composerBackground.r * 0.94), Math.round(composerBackground.g * 0.94), Math.round(composerBackground.b * 0.94), composerBackground.a)
+      : undefined
     const windowName = (window: { label: string; title?: string }) => window.title ?? (window.label === "W" ? "Week" : "Session")
     const windowLines = (window: UsageSnapshot["windows"][number]) => [
       `${windowName(window)} · ${Math.round(window.usedPercent)}%${window.valueLabel ? ` · ${window.valueLabel}` : ""}`,
@@ -146,25 +151,27 @@ export default Plugin.define({
 
       return (
         <Show when={snapshot().windows.length > 0}>
-          <box width="100%" height={1} flexDirection="row" justifyContent="center">
-            <Show when={snapshot().providerName}>
-              <text fg={muted}>{`${snapshot().providerName}: `}</text>
-            </Show>
-            <For each={snapshot().windows}>
-              {(window, index) => (
-                <>
-                  <box
-                    flexDirection="row"
-                    onMouseUp={(event: any) => {
-                      event.preventDefault()
-                      showDetails()
-                    }}
-                  >
-                    <text fg={muted}>{`${index() > 0 ? "\u00a0" : ""}${formatBar(window.usedPercent)}${window.label ? ` ${window.label}` : ""} ${Math.round(window.usedPercent)}%${window.composerValueLabel ? ` ${window.composerValueLabel}` : ""}${window.resetAt ? ` ${formatCompactRemaining(window.resetAt)}` : ""}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
-                  </box>
-                </>
-              )}
-            </For>
+          <box width="100%" height={1} flexDirection="row" backgroundColor={meterBackground} shouldFill>
+            <box width="100%" height={1} flexDirection="row" justifyContent="center" paddingLeft={1} paddingRight={1}>
+              <Show when={snapshot().providerName}>
+                <text fg={muted}>{`${snapshot().providerName}: `}</text>
+              </Show>
+              <For each={snapshot().windows}>
+                {(window, index) => (
+                  <>
+                    <box
+                      flexDirection="row"
+                      onMouseUp={(event: any) => {
+                        event.preventDefault()
+                        showDetails()
+                      }}
+                    >
+                      <text fg={muted}>{`${index() > 0 ? "\u00a0" : ""}${formatBar(window.usedPercent)}${window.label ? ` ${window.label}` : ""} ${Math.round(window.usedPercent)}%${window.composerValueLabel ? ` ${window.composerValueLabel}` : ""}${window.resetAt ? ` ${formatCompactRemaining(window.resetAt)}` : ""}${index() < snapshot().windows.length - 1 ? "\u00a0·" : ""}`}</text>
+                    </box>
+                  </>
+                )}
+              </For>
+            </box>
           </box>
         </Show>
       )
